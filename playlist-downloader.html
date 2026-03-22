@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CPlayer 5 - 歌单下载器</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {
+            --primary-color: #ffffff;
+            --on-primary-color: #000000;
+            --bg-color: #28183B;
+            --surface-color: rgba(255, 255, 255, 0.08);
+            --surface-container-high-color: rgba(255, 255, 255, 0.12);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Noto Sans SC', 'PingFang SC', sans-serif;
+            background-color: var(--bg-color);
+            color: #ffffff;
+            overflow: hidden;
+        }
+
+        /* 极简流体背景模拟 */
+        @keyframes flowingGradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .animated-bg {
+            position: fixed;
+            inset: 0;
+            z-index: -1;
+            background: radial-gradient(circle at 20% 30%, rgba(99, 30, 150, 0.5) 0%, transparent 50%),
+                        radial-gradient(circle at 80% 80%, rgba(30, 60, 150, 0.5) 0%, transparent 50%),
+                        radial-gradient(circle at 50% 50%, rgba(50, 20, 80, 0.8) 0%, transparent 100%);
+            background-size: 200% 200%;
+            animation: flowingGradient 15s ease infinite;
+            background-color: #1a0f2e;
+        }
+
+        .glass-card {
+            background: rgba(20, 20, 30, 0.6);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        .input-field:focus {
+            box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1);
+        }
+    </style>
+</head>
+
+<body class="flex items-center justify-center min-h-screen p-4">
+
+    <!-- 背景 -->
+    <div class="animated-bg"></div>
+    <div class="fixed inset-0 w-full h-full pointer-events-none opacity-[0.03] mix-blend-overlay z-[-1]"
+        style="background-image: url(&quot;data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E&quot;);">
+    </div>
+
+    <!-- 复制/提示 Toast -->
+    <div id="toast"
+        class="fixed top-10 left-1/2 transform -translate-x-1/2 bg-[rgba(255,255,255,0.15)] text-white px-6 py-3 rounded-full shadow-xl z-[100] opacity-0 pointer-events-none transition-all duration-300 scale-90 flex items-center gap-2 border border-white/20 backdrop-blur-md">
+        <i id="toastIcon" class="fas fa-check-circle"></i>
+        <span id="toastText" class="font-bold text-sm tracking-wide">操作成功</span>
+    </div>
+
+    <!-- 主卡片 -->
+    <div class="glass-card w-full max-w-md mx-auto rounded-3xl overflow-hidden transform transition-all">
+        <!-- 顶部渐变装饰条 -->
+        <div class="h-1.5 bg-gradient-to-r from-purple-500 via-pink-500 to-orange-400"></div>
+
+        <div class="p-8">
+            <!-- Icon -->
+            <div class="flex justify-center mb-6">
+                <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-white/10 flex items-center justify-center shadow-lg">
+                    <i class="fas fa-file-download text-3xl opacity-90 text-white"></i>
+                </div>
+            </div>
+
+            <!-- Title -->
+            <h2 class="text-2xl font-bold text-center mb-2">生成 playlist.js</h2>
+            <p class="text-center opacity-60 text-sm mb-8">输入网易云歌单 ID，一键导出离线配置</p>
+
+            <!-- Input -->
+            <div class="relative mb-6">
+                <input type="text" id="playlistInput"
+                    placeholder="例如: 12345678"
+                    class="input-field w-full bg-white/[0.06] border border-white/[0.12] rounded-2xl px-5 py-4 text-center text-lg font-mono tracking-wider outline-none text-white transition-all placeholder:opacity-30 placeholder:text-sm placeholder:tracking-normal placeholder:font-sans"
+                    autocomplete="off" inputmode="numeric">
+            </div>
+
+            <!-- Button -->
+            <button id="downloadBtn"
+                class="w-full py-4 rounded-2xl bg-white text-black font-bold text-base active:scale-[0.98] transition-all hover:bg-white/90 shadow-[0_0_20px_rgba(255,255,255,0.2)] disabled:opacity-50 disabled:cursor-not-allowed">
+                <i class="fas fa-download mr-2"></i>立即生成并下载
+            </button>
+            
+            <p class="text-center text-xs opacity-40 mt-6 flex items-center justify-center">
+                <i class="fas fa-info-circle mr-1"></i>
+                导出的文件直接放在播放器同级目录即可
+            </p>
+        </div>
+    </div>
+
+    <script>
+        const input = document.getElementById('playlistInput');
+        const btn = document.getElementById('downloadBtn');
+        const toast = document.getElementById('toast');
+        const toastText = document.getElementById('toastText');
+        const toastIcon = document.getElementById('toastIcon');
+
+        function showToast(msg, isError = false) {
+            toastText.textContent = msg;
+            toast.classList.remove('opacity-0', 'scale-90');
+            toast.classList.add('opacity-100', 'scale-100');
+            
+            if (isError) {
+                toastIcon.className = "fas fa-times-circle text-red-400";
+            } else {
+                toastIcon.className = "fas fa-check-circle text-green-400";
+            }
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'scale-90');
+                toast.classList.remove('opacity-100', 'scale-100');
+            }, 3000);
+        }
+
+        async function fetchAndDownload() {
+            const rawId = input.value.trim();
+            const idMatch = rawId.match(/(\d{5,})/);
+
+            if (!idMatch) {
+                showToast('请输入有效的歌单ID (至少5位纯数字)', true);
+                input.classList.add('border-red-400/50');
+                setTimeout(() => input.classList.remove('border-red-400/50'), 2000);
+                return;
+            }
+
+            const listId = idMatch[1];
+
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-circle-notch fa-spin mr-2"></i>解析获取中...';
+
+            try {
+                // 使用原播放器中的 ChKSz API 获取数据
+                const url = `https://api.chksz.top/api/163_playlist?id=${listId}`;
+                const res = await fetch(url);
+                const json = await res.json();
+
+                let tracks = [];
+                if (json.data && Array.isArray(json.data.tracks)) {
+                    tracks = json.data.tracks;
+                } else if (json.data && Array.isArray(json.data)) {
+                    tracks = json.data;
+                } else if (json.playlist && Array.isArray(json.playlist.tracks)) {
+                    tracks = json.playlist.tracks;
+                }
+
+                if (!tracks || tracks.length === 0) {
+                    throw new Error('歌单为空或获取失败，请检查ID');
+                }
+
+                // 包装成 CPlayer 5 兼容的本地格式结构
+                const formattedData = {
+                    title: `Playlist_${listId}`,
+                    data: {
+                        tracks: tracks
+                    }
+                };
+
+                const jsContent = `window.LOCAL_PLAYLIST = ${JSON.stringify(formattedData, null, 2)};`;
+
+                // 触发下载
+                const blob = new Blob([jsContent], { type: 'application/javascript;charset=utf-8' });
+                const blobUrl = URL.createObjectURL(blob);
+                
+                const a = document.createElement('a');
+                a.href = blobUrl;
+                a.download = 'playlist.js';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(blobUrl);
+
+                showToast(`🎉 成功生成！共包含 ${tracks.length} 首歌曲`);
+                input.value = '';
+
+            } catch (error) {
+                console.error(error);
+                showToast(error.message || '获取失败，请检查网络或重试', true);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-download mr-2"></i>立即生成并下载';
+            }
+        }
+
+        btn.addEventListener('click', fetchAndDownload);
+        input.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') fetchAndDownload();
+        });
+    </script>
+</body>
+</html>

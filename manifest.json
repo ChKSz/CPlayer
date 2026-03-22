@@ -1,0 +1,26 @@
+{
+  "name": "CPlayer 5",
+  "short_name": "CPlayer",
+  "description": "超清母带在线音乐播放器",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#28183B",
+  "theme_color": "#28183B",
+  "orientation": "any",
+  "categories": ["music", "entertainment"],
+  "icons": [
+    {
+      "src": "img/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "img/icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
