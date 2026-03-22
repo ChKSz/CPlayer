@@ -230,3 +230,4 @@ CPlayer/
 - [Color Thief](https://lokeshdhakar.com/projects/color-thief/) - 专辑封面主色提取
 - [Font Awesome](https://fontawesome.com/) - 图标资源
 - [Noto Sans SC](https://fonts.google.com/noto/specimen/Noto+Sans+SC) - 开源中文字体
+- [LINUX DO社区](https://linux.do) - 佬友们的支持
